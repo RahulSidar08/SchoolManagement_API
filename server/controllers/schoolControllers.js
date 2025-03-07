@@ -35,33 +35,6 @@ export const addSchool = async (req, res) => {
 };
 
 
-export const getAllSchools = async (req, res) => {
-    try {
-        const [schools] = await mysqlPool.query("SELECT * FROM schools");
-
-        if (!schools.length) {
-            return res.status(200).json({
-                success: true,
-                message: "No School has been added yet",
-                schoolsData: [],
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Schools Fetched Successfully!",
-            schoolsData: schools,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-            error: error.message,
-        });
-    }
-};
-
-
 export const listSchools = async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
