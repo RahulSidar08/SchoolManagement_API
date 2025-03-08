@@ -1,45 +1,65 @@
 import { mysqlPool } from "../utils/connectDb.js";
 
 export const addSchool = async (req, res) => {
-  try {
-    const { name, address, latitude, longitude } = req.body;
+    try {
+        const { name, address, latitude, longitude } = req.body;
+        if (!name || !address || latitude == null || longitude == null) {
+            return res.status(400).json({
+                success: false,
+                error: "All fields are required",
+            });
+        }
 
-    if (!name || !address || latitude == null || longitude == null) {
-      return res.status(400).json({
-        success : false,
-        error : "All fields are required"
+        if (typeof latitude !== "number" || typeof longitude !== "number") {
+            return res.status(400).json({
+                success: false,
+                error: "Latitude and Longitude must be numbers",
+            });
+        }
+
+        const [existingSchool] = await mysqlPool.query(
+            "SELECT id FROM schools WHERE latitude = ? AND longitude = ?",
+            [latitude, longitude]
+        );
+
+        if (existingSchool.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "A school with the same location already exists!",
+            });
+        }
+
+        const query = `
+            INSERT INTO schools (name, address, latitude, longitude) 
+            VALUES (?, ?, ?, ?)
+        `;
+        const values = [name, address, latitude, longitude];
+
+        const [result] = await mysqlPool.query(query, values);
+
+        res.status(201).json({
+            success: true,
+            message: "School added successfully",
+            schoolId: result.insertId,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.sqlMessage || "Internal Server Error",
+            error: error.message,
         });
     }
-
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return res.status(400).json({
-            success : false, 
-            error: "Latitude and Longitude must be numbers" 
-        });
-    }
-
-
-    const query ="INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)";
-    const values = [name, address, latitude, longitude];
-
-    const [result] = await mysqlPool.query(query, values);
-
-    res.status(201).json({
-      message: "School added successfully",
-      schoolId: result.insertId,
-    });
-  } catch (error) {
-    console.error("Error adding school:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
 };
+
+
+  
 
 
 export const listSchools = async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
 
-        // Validate required parameters
         if (!latitude || !longitude) {
             return res.status(400).json({
                 success: false,
@@ -51,7 +71,6 @@ export const listSchools = async (req, res) => {
         const userLat = parseFloat(latitude);
         const userLon = parseFloat(longitude);
 
-        // Fetch all schools
         const [schools] = await mysqlPool.query("SELECT id, name, latitude, longitude FROM schools");
 
         if (schools.length === 0) {
